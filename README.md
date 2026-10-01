@@ -11,7 +11,7 @@ A lightweight floating window manager for tmux that allows you to create customi
 - Run specific commands automatically when opening a popup
 - Set custom working directories per popup
 - Support for custom key bindings and tmux prefix keys
-- Per-directory sessions: create separate sessions for each git repository
+- Per-directory sessions or windows: create separate sessions (or windows) for each git repository
 - Eject a pane from the popup into the parent session, and reclaim it back
 
 ## Installation
@@ -64,7 +64,7 @@ TPad sessions are configured using tmux options in the format: `@tpad-<session_n
 | dir         | $HOME   | Working directory for the session                                            |
 | env         |         | Additional environment variables                                             |
 | opts        |         | Session-specific tmux options (semicolon-separated)                          |
-| per-dir     | false   | Create separate sessions per git repository/directory                        |
+| per-dir     | false   | `true`: a session per git repository/directory; `window`: a window per git repository/directory in one session |
 | prefix      |         | Custom tmux prefix for the session                                           |
 | shell       | false   | Keep the shell process (for compound commands like `cmd1 && cmd2`)           |
 | table       |         | Key table for the binding (e.g., `root`). Auto-detected for mouse events.    |
@@ -176,6 +176,14 @@ set -g @tpad-git-per-dir "true"
 ```
 
 Now pressing `Ctrl-g` in different git repositories will open separate lazygit sessions for each project.
+
+**Windows instead of sessions:**
+
+Set `per-dir` to `window` to keep a single `tpad_<instance>` session with one window per git root/directory. Toggling the popup selects (or creates) the window for the current directory. Windows are named after their directory, and the popup title omits the directory suffix. When a window's command exits, the popup closes rather than showing another directory's window.
+
+```tmux
+set -g @tpad-git-per-dir "window"
+```
 
 ### Shell Mode
 
