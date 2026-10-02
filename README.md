@@ -19,11 +19,11 @@ A lightweight floating window manager for tmux that allows you to create customi
 ### Using TPM (recommended)
 
 1. Install [Tmux Plugin Manager (TPM)](https://github.com/tmux-plugins/tpm) if you haven't already
-2. Add the following to your `~/.tmux.conf`:
+1. Add the following to your `~/.tmux.conf`:
    ```tmux
    set -g @plugin 'Subbeh/tmux-tpad'
    ```
-3. Press `prefix` + <kbd>I</kbd> to install the plugin
+1. Press `prefix` + <kbd>I</kbd> to install the plugin
 
 ## Configuration
 
@@ -31,45 +31,45 @@ TPad sessions are configured using tmux options in the format: `@tpad-<session_n
 
 ### Global Options
 
-| Option                | Default | Description                                       |
+| Option | Default | Description |
 | --------------------- | ------- | ------------------------------------------------- |
-| @tpad-debug           | false   | Enable debug logging to `~/.cache/tpad.log`       |
-| @tpad-bind-fullscreen | C-f     | Key to toggle fullscreen mode (prefix + key)      |
-| @tpad-bind-eject      | C-e     | Key to eject a pane from the popup (prefix + key) |
+| @tpad-debug | false | Enable debug logging to `~/.cache/tpad.log` |
+| @tpad-bind-fullscreen | C-f | Key to toggle fullscreen mode (prefix + key) |
+| @tpad-bind-eject | C-e | Key to eject a pane from the popup (prefix + key) |
 
 ### Required Options
 
-| Option | Description                                                      |
+| Option | Description |
 | ------ | ---------------------------------------------------------------- |
-| bind   | Key binding to toggle the popup session (e.g., "C-p" for Ctrl+P) |
+| bind | Key binding to toggle the popup session (e.g., "C-p" for Ctrl+P) |
 
 ### Appearance Options
 
-| Option       | Default                                  | Description                                                    |
+| Option | Default | Description |
 | ------------ | ---------------------------------------- | -------------------------------------------------------------- |
-| title        | `#[fg=magenta,bold] 󱂬 TPad: @instance@ ` | Popup window title                                             |
-| width        | 60%                                      | Popup width (percentage or columns)                            |
-| height       | 60%                                      | Popup height (percentage or rows)                              |
-| style        | fg=blue                                  | Popup window style                                             |
-| border_style |                                          | Border style (e.g., "fg=cyan")                                 |
-| border_lines | rounded                                  | Border line style (rounded/none/etc)                           |
-| pos_x        |                                          | Horizontal position (percentage, pixels, or left/center/right) |
-| pos_y        |                                          | Vertical position (percentage, pixels, or top/center/bottom)   |
+| title | `#[fg=magenta,bold] 󱂬 TPad: @instance@ ` | Popup window title |
+| width | 60% | Popup width (percentage or columns) |
+| height | 60% | Popup height (percentage or rows) |
+| style | fg=blue | Popup window style |
+| border_style | | Border style (e.g., "fg=cyan") |
+| border_lines | rounded | Border line style (rounded/none/etc) |
+| pos_x | | Horizontal position (percentage, pixels, or left/center/right) |
+| pos_y | | Vertical position (percentage, pixels, or top/center/bottom) |
 
 ### Behavior Options
 
-| Option      | Default | Description                                                                  |
+| Option | Default | Description |
 | ----------- | ------- | ---------------------------------------------------------------------------- |
-| cmd         |         | Command to execute when popup opens (runs with `exec` by default)            |
-| dir         | $HOME   | Working directory for the session                                            |
-| env         |         | Additional environment variables                                             |
-| opts        |         | Session-specific tmux options (semicolon-separated)                          |
-| per-dir     | false   | `true`: a session per git repository/directory; `window`: a window per git repository/directory in one session |
-| prefix      |         | Custom tmux prefix for the session                                           |
-| shell       | false   | Keep the shell process (for compound commands like `cmd1 && cmd2`)           |
-| table       |         | Key table for the binding (e.g., `root`). Auto-detected for mouse events.    |
-| eject-split |         | Where to place the ejected pane: `right`, `left`, `above`, `below` (default) |
-| eject-size  |         | Size of the ejected pane as a percentage (e.g. `30`)                         |
+| cmd | | Command to execute when popup opens (runs with `exec` by default) |
+| dir | $HOME | Working directory for the session |
+| env | | Additional environment variables |
+| opts | | Session-specific tmux options (semicolon-separated) |
+| per-dir | false | `true`: a session per git repository/directory; `window`: a window per git repository/directory in one session |
+| prefix | | Custom tmux prefix for the session |
+| shell | false | Keep the shell process (for compound commands like `cmd1 && cmd2`) |
+| table | | Key table for the binding (e.g., `root`). Auto-detected for mouse events. |
+| eject-split | | Where to place the ejected pane: `right`, `left`, `above`, `below` (default) |
+| eject-size | | Size of the ejected pane as a percentage (e.g. `30`) |
 
 ## Example Configuration
 
@@ -135,9 +135,9 @@ set -g @tpad-quick-table        "root"
 ## Usage
 
 1. Configure your popup sessions in `tmux.conf` as shown above
-2. Press your tmux prefix key (default: <kbd>Ctrl</kbd>+<kbd>b</kbd>), then press the configured key binding to toggle the popup (e.g., <kbd>Ctrl</kbd>+<kbd>g</kbd> for the git session)
-3. For root-table bindings (`table "root"` or mouse events), no prefix key is needed
-4. The popup will close automatically when the command exits
+1. Press your tmux prefix key (default: <kbd>Ctrl</kbd>+<kbd>b</kbd>), then press the configured key binding to toggle the popup (e.g., <kbd>Ctrl</kbd>+<kbd>g</kbd> for the git session)
+1. For root-table bindings (`table "root"` or mouse events), no prefix key is needed
+1. The popup will close automatically when the command exits
 
 ### Full-screen mode
 

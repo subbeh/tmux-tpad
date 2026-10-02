@@ -24,14 +24,14 @@ declare -A DEFAULTS=(
 main() {
   check_dependencies
   case "${1:-}" in
-    toggle) toggle_popup "$2" ;;
-    fullscreen) toggle_fullscreen ;;
-    eject) eject_pane ;;
-    "") initialize_instances ;;
-    *)
-      show_help
-      exit 1
-      ;;
+  toggle) toggle_popup "$2" ;;
+  fullscreen) toggle_fullscreen ;;
+  eject) eject_pane ;;
+  "") initialize_instances ;;
+  *)
+    show_help
+    exit 1
+    ;;
   esac
 }
 
@@ -215,7 +215,7 @@ bind_key() {
   # Mouse events always require the root table
   if [[ -z "$table" ]]; then
     case "$key" in
-      Mouse* | DoubleClick* | TripleClick* | WheelUp* | WheelDown*) table="root" ;;
+    Mouse* | DoubleClick* | TripleClick* | WheelUp* | WheelDown*) table="root" ;;
     esac
   fi
 
@@ -338,10 +338,10 @@ eject_pane() {
   local split_size="$(get_config "$instance" eject-size)"
   local join_opts=()
   case "$split_dir" in
-    right) join_opts+=(-h) ;;
-    left) join_opts+=(-h -b) ;;
-    above) join_opts+=(-b) ;;
-    *) ;;
+  right) join_opts+=(-h) ;;
+  left) join_opts+=(-h -b) ;;
+  above) join_opts+=(-b) ;;
+  *) ;;
   esac
   if [[ -n "$split_size" ]]; then
     join_opts+=(-l "${split_size}%")
