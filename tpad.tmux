@@ -13,7 +13,7 @@ readonly CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly TPAD_SCRIPT="${CURRENT_DIR}/tpad.tmux"
 
 declare -A DEFAULTS=(
-  [title]="#[fg=magenta,bold] 󱂬 TPad: @instance@ "
+  [title]="#[fg=terminal,bold] 󱂬 TPad: @instance@ "
   [dir]="$HOME"
   [width]="60%"
   [height]="60%"

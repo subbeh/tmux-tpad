@@ -47,7 +47,7 @@ TPad sessions are configured using tmux options in the format: `@tpad-<session_n
 
 | Option | Default | Description |
 | ------------ | ---------------------------------------- | -------------------------------------------------------------- |
-| title | `#[fg=magenta,bold] 󱂬 TPad: @instance@ ` | Popup window title |
+| title | `#[fg=terminal,bold] 󱂬 TPad: @instance@ ` | Popup window title |
 | width | 60% | Popup width (percentage or columns) |
 | height | 60% | Popup height (percentage or rows) |
 | style | fg=blue | Popup window style |
