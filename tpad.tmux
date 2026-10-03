@@ -13,7 +13,7 @@ readonly CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly TPAD_SCRIPT="${CURRENT_DIR}/tpad.tmux"
 
 declare -A DEFAULTS=(
-  [title]="#[fg=magenta,bold] 󱂬 TPad: @instance@ "
+  [title]="#[fg=terminal,bold] 󱂬 TPad: @instance@ "
   [dir]="$HOME"
   [width]="60%"
   [height]="60%"
@@ -24,14 +24,14 @@ declare -A DEFAULTS=(
 main() {
   check_dependencies
   case "${1:-}" in
-    toggle) toggle_popup "$2" ;;
-    fullscreen) toggle_fullscreen ;;
-    eject) eject_pane ;;
-    "") initialize_instances ;;
-    *)
-      show_help
-      exit 1
-      ;;
+  toggle) toggle_popup "$2" ;;
+  fullscreen) toggle_fullscreen ;;
+  eject) eject_pane ;;
+  "") initialize_instances ;;
+  *)
+    show_help
+    exit 1
+    ;;
   esac
 }
 
@@ -56,23 +56,20 @@ toggle_popup() {
   local instance="$1"
   local session="tpad_${instance}"
   local working_dir=""
+  # Identifies the session (or per-dir window) for eject/reclaim tracking
+  local target="$session"
 
-  # Check if per-directory sessions are enabled
+  # Check if per-directory sessions/windows are enabled
   local per_dir="$(get_config "$instance" per-dir)"
-  if [[ "$per_dir" == "true" ]]; then
+  if [[ "$per_dir" == "true" || "$per_dir" == "window" ]]; then
     local pane_dir="$(tmux display-message -p '#{pane_current_path}')"
     local git_root="$(get_git_root "$pane_dir")"
 
-    if [[ -n "$git_root" ]]; then
-      local dir_suffix="$(sanitize_dir_name "$git_root")"
-      session="tpad_${instance}_${dir_suffix}"
-      working_dir="$git_root"
-    else
-      # Fall back to using pane's current directory if not in a git repo
-      local dir_suffix="$(sanitize_dir_name "$pane_dir")"
-      session="tpad_${instance}_${dir_suffix}"
-      working_dir="$pane_dir"
-    fi
+    # Fall back to using pane's current directory if not in a git repo
+    working_dir="${git_root:-$pane_dir}"
+    target="tpad_${instance}_$(sanitize_dir_name "$working_dir")"
+    # In window mode all directories share one session with a window per directory
+    [[ "$per_dir" == "true" ]] && session="$target"
   fi
 
   local current_session="$(tmux display-message -p '#{session_name}')"
@@ -89,8 +86,11 @@ toggle_popup() {
       tmux detach
     fi
     tmux setenv -g TPAD_PARENT_SESSION "$current_session"
-    if ! reclaim_ejected_pane "$instance" "$session"; then
+    if ! reclaim_ejected_pane "$instance" "$session" "$target" "$working_dir"; then
       create_session_if_needed "$instance" "$session" "$working_dir"
+    fi
+    if [[ "$per_dir" == "window" ]]; then
+      select_dir_window "$instance" "$session" "$working_dir"
     fi
     local popup_opts=()
     while IFS= read -r opt; do
@@ -110,6 +110,10 @@ create_session_if_needed() {
   # Use provided working_dir or fall back to config
   local dir="${working_dir:-$(get_config "$instance" dir)}"
   local session_id="$(tmux new-session -dP -s "$session" -c "$dir" -F '#{session_id}')"
+  if [[ "$(get_config "$instance" per-dir)" == "window" ]]; then
+    tmux set -w -t "${session_id}:" @tpad-dir "$dir"
+    tmux rename-window -t "${session_id}:" "$(basename "$dir")"
+  fi
   configure_session "$instance" "$session_id"
 }
 
@@ -117,11 +121,44 @@ configure_session() {
   local instance="$1"
   local session_id="$2"
   apply_session_config "$instance" "$session_id"
+  run_cmd "$instance" "$session_id"
+}
 
+run_cmd() {
+  local instance="$1"
+  local target="$2"
   local cmd="$(get_config "$instance" cmd)"
   if [[ -n "$cmd" ]]; then
-    tmux send-keys -t "$session_id" "$cmd; exit" C-m
+    local use_shell="$(get_config "$instance" shell)"
+    if [[ "$use_shell" == "true" ]]; then
+      tmux send-keys -t "$target" "$cmd" C-m
+    else
+      tmux send-keys -t "$target" "exec $cmd" C-m
+    fi
   fi
+}
+
+# Window mode: select the session's window for dir, creating it if needed
+select_dir_window() {
+  local instance="$1"
+  local session="$2"
+  local dir="$3"
+  local window_id="" id win_dir
+
+  while IFS=$'\t' read -r id win_dir; do
+    if [[ "$win_dir" == "$dir" ]]; then
+      window_id="$id"
+      break
+    fi
+  done < <(tmux list-windows -t "$session" -F $'#{window_id}\t#{@tpad-dir}')
+
+  if [[ -z "$window_id" ]]; then
+    window_id="$(tmux new-window -dP -t "${session}:" -c "$dir" -F '#{window_id}')"
+    tmux set -w -t "$window_id" @tpad-dir "$dir"
+    tmux rename-window -t "$window_id" "$(basename "$dir")"
+    run_cmd "$instance" "$window_id"
+  fi
+  tmux select-window -t "$window_id"
 }
 
 apply_session_config() {
@@ -132,6 +169,10 @@ apply_session_config() {
   tmux set -t "$session_id" status off
   tmux set -t "$session_id" detach-on-destroy on
   tmux set -t "$session_id" @tpad-instance "$instance"
+  # Window mode: close the popup when a window exits instead of showing another directory's window
+  if [[ "$(get_config "$instance" per-dir)" == "window" ]]; then
+    tmux set-hook -t "$session_id" window-unlinked "detach-client -s '$session_id'"
+  fi
   set_opts "$instance" "$session_id"
 
   local prefix="$(get_config "$instance" prefix)"
@@ -174,7 +215,7 @@ bind_key() {
   # Mouse events always require the root table
   if [[ -z "$table" ]]; then
     case "$key" in
-      Mouse* | DoubleClick* | TripleClick* | WheelUp* | WheelDown*) table="root" ;;
+    Mouse* | DoubleClick* | TripleClick* | WheelUp* | WheelDown*) table="root" ;;
     esac
   fi
 
@@ -210,8 +251,8 @@ build_popup_options() {
     # Use provided working_dir for the dir option if available
     if [[ "$opt" == "d" && -n "$working_dir" ]]; then
       val="$working_dir"
-    elif [[ "$opt" == "T" && -n "$working_dir" ]]; then
-      # Append directory name to title if per-dir is enabled
+    elif [[ "$opt" == "T" && -n "$working_dir" && "$(get_config "$instance" per-dir)" != "window" ]]; then
+      # Append directory name to title if per-dir sessions are enabled
       val="$(get_config "$instance" "${opt_map[$opt]}")"
       local dir_name="$(basename "$working_dir")"
       val="${val% } [${dir_name}]  "
@@ -297,26 +338,36 @@ eject_pane() {
   local split_size="$(get_config "$instance" eject-size)"
   local join_opts=()
   case "$split_dir" in
-    right) join_opts+=(-h) ;;
-    left) join_opts+=(-h -b) ;;
-    above) join_opts+=(-b) ;;
-    *) ;;
+  right) join_opts+=(-h) ;;
+  left) join_opts+=(-h -b) ;;
+  above) join_opts+=(-b) ;;
+  *) ;;
   esac
   if [[ -n "$split_size" ]]; then
     join_opts+=(-l "${split_size}%")
   fi
 
+  # Window mode: track the ejected pane per directory window, not per session
+  local target="$current_session"
+  local win_dir="$(tmux display-message -p '#{@tpad-dir}')"
+  if [[ -n "$win_dir" ]]; then
+    target="tpad_${instance}_$(sanitize_dir_name "$win_dir")"
+  fi
+
   tmux join-pane "${join_opts[@]}" -s "$pane_id" -t "$parent_session"
-  local env_key="TPAD_EJECTED_$(echo "$current_session" | tr '[:lower:]' '[:upper:]' | tr -c '[:alnum:]' '_')"
+  local env_key="TPAD_EJECTED_$(echo "$target" | tr '[:lower:]' '[:upper:]' | tr -c '[:alnum:]' '_')"
   tmux setenv -g "$env_key" "$pane_id"
   # Close the popup — detach-on-destroy won't fire if other windows remain
-  tmux detach-client -s "$current_session"
+  tmux detach-client -s "$current_session" 2>/dev/null || true
 }
 
 reclaim_ejected_pane() {
   local instance="$1"
   local session="$2"
-  local env_key="TPAD_EJECTED_$(echo "$session" | tr '[:lower:]' '[:upper:]' | tr -c '[:alnum:]' '_')"
+  local target="$3"
+  local working_dir="$4"
+  local per_dir="$(get_config "$instance" per-dir)"
+  local env_key="TPAD_EJECTED_$(echo "$target" | tr '[:lower:]' '[:upper:]' | tr -c '[:alnum:]' '_')"
   local pane_id="$(tmux show-env -g "$env_key" 2>/dev/null | cut -d= -f2)"
 
   if [[ -z "$pane_id" ]]; then return 1; fi
@@ -327,7 +378,10 @@ reclaim_ejected_pane() {
   fi
 
   tmux setenv -g -u "$env_key"
-  if tmux has-session -t "$session" 2>/dev/null; then
+  if [[ "$per_dir" == "window" ]] && tmux has-session -t "$session" 2>/dev/null; then
+    # Window mode — move the pane back into its own window
+    tmux break-pane -d -s "$pane_id" -t "${session}:"
+  elif tmux has-session -t "$session" 2>/dev/null; then
     # Session still exists (had multiple windows) — add pane as a new window
     local new_win="$(tmux new-window -dP -t "${session}:" -F '#{pane_id}')"
     tmux join-pane -s "$pane_id" -t "${session}:"
@@ -340,6 +394,10 @@ reclaim_ejected_pane() {
     apply_session_config "$instance" "$session_id"
     tmux join-pane -s "$pane_id" -t "${session}:"
     tmux kill-pane -t "$placeholder"
+  fi
+  if [[ "$per_dir" == "window" ]]; then
+    tmux set -w -t "$pane_id" @tpad-dir "$working_dir"
+    tmux rename-window -t "$pane_id" "$(basename "$working_dir")"
   fi
 }
 
