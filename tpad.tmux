@@ -24,7 +24,7 @@ declare -A DEFAULTS=(
 main() {
   check_dependencies
   case "${1:-}" in
-  toggle) toggle_popup "$2" ;;
+  toggle) toggle_popup "$2" "${3:-}" ;;
   fullscreen) toggle_fullscreen ;;
   eject) eject_pane ;;
   "") initialize_instances ;;
@@ -54,6 +54,8 @@ initialize_instances() {
 
 toggle_popup() {
   local instance="$1"
+  # Client that pressed the key; without it tmux guesses one, and guesses wrong inside popups
+  local key_client="${2:-$(tmux display-message -p '#{client_name}')}"
   local session="tpad_${instance}"
   local working_dir=""
   # Identifies the session (or per-dir window) for eject/reclaim tracking
@@ -62,7 +64,7 @@ toggle_popup() {
   # Check if per-directory sessions/windows are enabled
   local per_dir="$(get_config "$instance" per-dir)"
   if [[ "$per_dir" == "true" || "$per_dir" == "window" ]]; then
-    local pane_dir="$(tmux display-message -p '#{pane_current_path}')"
+    local pane_dir="$(tmux display-message -t "$key_client" -p '#{pane_current_path}')"
     local git_root="$(get_git_root "$pane_dir")"
 
     # Fall back to using pane's current directory if not in a git repo
@@ -72,18 +74,26 @@ toggle_popup() {
     [[ "$per_dir" == "true" ]] && session="$target"
   fi
 
-  local current_session="$(tmux display-message -p '#{session_name}')"
+  local current_session="$(tmux display-message -t "$key_client" -p '#{session_name}')"
 
   if [[ "$current_session" == "$session" ]]; then
     if tmux show-env -g TPAD_ZOOMED | grep -q "$session"; then
       tmux setenv -g -u TPAD_ZOOMED
-      tmux switch-client -t "$(tmux show-env -g TPAD_PARENT_SESSION | cut -d= -f2)"
+      tmux switch-client -c "$key_client" -t "$(tmux show-env -g TPAD_PARENT_SESSION | cut -d= -f2)"
     else
-      tmux detach
+      tmux detach-client -t "$key_client"
     fi
   else
+    # The client showing the popup; inside a popup it's the outer client saved when the popup opened
+    local client="$key_client"
     if [[ "$current_session" =~ tpad_* ]]; then
-      tmux detach
+      client="$(tmux show-option -t "$current_session" -qv @tpad-client)"
+      if [[ -n "$client" ]]; then
+        # Close the old popup synchronously; a detach races with the new display-popup
+        tmux display-popup -C -c "$client"
+      else
+        tmux detach-client -t "$key_client"
+      fi
     fi
     tmux setenv -g TPAD_PARENT_SESSION "$current_session"
     if ! reclaim_ejected_pane "$instance" "$session" "$target" "$working_dir"; then
@@ -97,7 +107,12 @@ toggle_popup() {
       popup_opts+=("$opt")
     done < <(build_popup_options "$instance" "$working_dir")
 
-    tmux display-popup "${popup_opts[@]}" -E "tmux attach -t $session"
+    local client_opts=()
+    if [[ -n "$client" ]]; then
+      tmux set -t "$session" @tpad-client "$client"
+      client_opts=(-c "$client")
+    fi
+    tmux display-popup "${client_opts[@]}" "${popup_opts[@]}" -E "tmux attach -t $session"
   fi
 }
 
@@ -220,13 +235,13 @@ bind_key() {
   fi
 
   if [[ -n "$table" ]]; then
-    tmux bind-key -T "$table" -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+    tmux bind-key -T "$table" -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance '#{client_name}'"
   else
-    tmux bind-key -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+    tmux bind-key -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance '#{client_name}'"
   fi
 
   local eject_key="$(get_global_config bind-eject C-e)"
-  tmux bind-key -T "tpad_$instance" -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+  tmux bind-key -T "tpad_$instance" -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance '#{client_name}'"
   tmux bind-key -T "tpad_$instance" -N "TPad: Eject" "$eject_key" run-shell "$TPAD_SCRIPT eject"
 }
 
