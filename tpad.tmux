@@ -118,7 +118,8 @@ toggle_popup() {
       tmux set -t "$session" @tpad-client "$client"
       client_opts=(-c "$client")
     fi
-    tmux display-popup "${client_opts[@]}" "${popup_opts[@]}" -E "tmux attach -t $session"
+    # 129 (SIGHUP): a switch to another popup closed this one with display-popup -C
+    tmux display-popup "${client_opts[@]}" "${popup_opts[@]}" -E "tmux attach -t $session" || (($? == 129))
   fi
 }
 
