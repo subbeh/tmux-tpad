@@ -139,6 +139,22 @@ set -g @tpad-quick-table        "root"
 1. For root-table bindings (`table "root"` or mouse events), no prefix key is needed
 1. The popup will close automatically when the command exits
 
+### Scripting
+
+`tpad.tmux` also takes commands, for scripts and other key bindings:
+
+```sh
+tpad.tmux toggle <instance> [client]  # what the key binding runs
+tpad.tmux open <instance> [client]    # open it, or switch to it from another popup; never closes
+tpad.tmux close <instance> [client]   # close it if it's open; otherwise do nothing
+```
+
+`client` is the tmux client to act on (`#{client_name}`, e.g. `/dev/pts/0`); it defaults to the current one. Pass the terminal's client even while a popup is open on it. Run it through `tmux run-shell -b`: called directly from outside tmux, `display-popup` waits until the popup closes.
+
+```sh
+tmux run-shell -b "~/.tmux/plugins/tmux-tpad/tpad.tmux open git /dev/pts/0"
+```
+
 ### Full-screen mode
 
 Full-screen mode can be toggled by pressing the tmux prefix key with <kbd>Ctrl</kbd>+<kbd>f</kbd> from within a tpad session (configurable via `@tpad-bind-fullscreen`).

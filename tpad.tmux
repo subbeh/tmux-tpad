@@ -24,7 +24,7 @@ declare -A DEFAULTS=(
 main() {
   check_dependencies
   case "${1:-}" in
-  toggle) toggle_popup "$2" "${3:-}" ;;
+  toggle | open | close) toggle_popup "$2" "${3:-}" "$1" ;;
   fullscreen) toggle_fullscreen ;;
   eject) eject_pane ;;
   "") initialize_instances ;;
@@ -56,6 +56,10 @@ toggle_popup() {
   local instance="$1"
   # Client that pressed the key; without it tmux guesses one, and guesses wrong inside popups
   local key_client="${2:-$(tmux display-message -p '#{client_name}')}"
+  local mode="${3:-toggle}"
+  # A client passed from outside (e.g. a script) may be showing a popup; act as the popup's client
+  local inner="$(popup_client "$key_client")"
+  key_client="${inner:-$key_client}"
   local session="tpad_${instance}"
   local working_dir=""
   # Identifies the session (or per-dir window) for eject/reclaim tracking
@@ -77,6 +81,7 @@ toggle_popup() {
   local current_session="$(tmux display-message -t "$key_client" -p '#{session_name}')"
 
   if [[ "$current_session" == "$session" ]]; then
+    [[ "$mode" == open ]] && return
     if tmux show-env -g TPAD_ZOOMED | grep -q "$session"; then
       tmux setenv -g -u TPAD_ZOOMED
       tmux switch-client -c "$key_client" -t "$(tmux show-env -g TPAD_PARENT_SESSION | cut -d= -f2)"
@@ -84,6 +89,7 @@ toggle_popup() {
       tmux detach-client -t "$key_client"
     fi
   else
+    [[ "$mode" == close ]] && return
     # The client showing the popup; inside a popup it's the outer client saved when the popup opened
     local client="$key_client"
     if [[ "$current_session" =~ tpad_* ]]; then
@@ -114,6 +120,16 @@ toggle_popup() {
     fi
     tmux display-popup "${client_opts[@]}" "${popup_opts[@]}" -E "tmux attach -t $session"
   fi
+}
+
+# The client inside the tpad popup that outer client is showing, if any
+popup_client() {
+  local outer="$1" s
+  while read -r s; do
+    [[ "$(tmux show-option -t "$s" -qv @tpad-client)" == "$outer" ]] || continue
+    tmux list-clients -t "$s" -F '#{client_name}' | head -1
+    return
+  done < <(tmux list-sessions -f '#{&&:#{m:tpad_*,#{session_name}},#{session_attached}}' -F '#{session_name}')
 }
 
 create_session_if_needed() {
@@ -425,7 +441,9 @@ Usage:
 
 Commands:
   (no command)  Initialize all configured instances
-  toggle        Toggle a popup instance
+  toggle <instance> [client]  Toggle a popup instance
+  open <instance> [client]    Open a popup instance, or switch to it from another popup
+  close <instance> [client]   Close a popup instance if it is open
 EOF
 }
 
