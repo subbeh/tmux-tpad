@@ -21,7 +21,7 @@ A lightweight floating window manager for tmux that allows you to create customi
 1. Install [Tmux Plugin Manager (TPM)](https://github.com/tmux-plugins/tpm) if you haven't already
 1. Add the following to your `~/.tmux.conf`:
    ```tmux
-   set -g @plugin 'Subbeh/tmux-tpad'
+   set -g @plugin 'subbeh/tmux-tpad'
    ```
 1. Press `prefix` + <kbd>I</kbd> to install the plugin
 
@@ -95,7 +95,7 @@ set -g @tpad-claude-width       "30%"
 set -g @tpad-claude-pos_x       "350%"
 set -g @tpad-claude-pos_y       "80%"
 set -g @tpad-claude-per-dir     "true"
-set -g @tpad-claude-cmd         "claude-runner"
+set -g @tpad-claude-cmd         "claude"
 set -g @tpad-claude-opts        "status on"
 set -g @tpad-claude-eject-split "right"
 set -g @tpad-claude-eject-size  "40"
